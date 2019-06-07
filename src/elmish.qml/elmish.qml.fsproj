@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="View.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="elmish" Version="3.0.2" />
+    <PackageReference Update="FSharp.Core" Version="4.6.2" />
+    <PackageReference Include="qml.net" Version="0.10.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\elmish.qml.csharp\elmish.qml.csharp.csproj" />
+  </ItemGroup>
+
+</Project>
