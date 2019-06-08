@@ -37,12 +37,19 @@ ApplicationWindow {
 """
 
 let startElmishLoop
-    (program: Program<unit, 'model, 'msg, QmlElement>) =
+    (program: Program<unit, 'model, 'msg, QmlElement<'msg>>) =
     let setState model dispatch =
         let qmlEl = Program.view program model dispatch
-        let qml = toQml qmlEl
+
+        let (qml, msgs) = toQml qmlEl
+        let callback m =
+            match msgs |> Map.tryFind m with
+            | Some msg -> dispatch msg
+            | None -> ()
+
         if not (isNull Elmish.Qml.Csharp.QmlElmishManager.Instance)
         then
+            Elmish.Qml.Csharp.QmlElmishManager.Instance.Callback <- (System.Action<string> callback)
             Elmish.Qml.Csharp.QmlElmishManager.Instance.ChangeBindableProperty(qml)
         ()
 

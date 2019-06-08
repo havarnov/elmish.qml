@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Qml.Net;
 
 namespace Elmish.Qml.Csharp
@@ -11,6 +12,17 @@ namespace Elmish.Qml.Csharp
         }
 
         public static string _qmlStr = "";
+
+
+        public Action<string> Callback { get; set; }
+
+        public void MsgReceived(string msg)
+        {
+            if (Callback != null)
+            {
+                Callback(msg);
+            }
+        }
 
         public void ChangeBindableProperty(string newQmlStr)
         {

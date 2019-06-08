@@ -6,29 +6,42 @@ open Qml.Net.Runtimes
 
 module App =
     type Model = {
-        Name: string
-        Age: int
+        Color: Color
+        InnerColor: Color
     }
 
     type Msg =
-        | UpdateName of string
-        | IncrementAge
+        | SetColor of Color
+        | SetInnerColor of Color
 
     let init () =
         {
-            Name = "foobar"
-            Age = 23
+            Color = Red
+            InnerColor = Black
         },
-        Cmd.ofMsg IncrementAge
+        Cmd.none
 
     let update msg model =
         match msg with
-        | UpdateName name -> { model with Name = name }, Cmd.none
-        | IncrementAge ->
-            { model with Age = model.Age + 1 }, Cmd.none
+        | SetColor c ->
+            { model with Color = c }, Cmd.none
+        | SetInnerColor c ->
+            { model with InnerColor = c }, Cmd.none
 
     let view model dispatch =
-        rectangle [ Width 100; Height 100; Color Red; BorderColor Black; BorderWidth 5; Radius 10 ] []
+        let newColor =
+            match model.Color with
+            | Red -> Blue
+            | _ -> Red
+        let newInnerColor =
+            match model.InnerColor with
+            | Black -> Red
+            | _ -> Black
+        rectangle
+            [ Width 100; Height 100; Color model.Color; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetColor newColor) ]
+            [
+                rectangle [ Width 50; Height 50; Color model.InnerColor; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetInnerColor newInnerColor); ] []
+            ]
         
 
 [<EntryPoint>]
