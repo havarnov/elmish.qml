@@ -8,16 +8,20 @@ module App =
     type Model = {
         Color: Color
         InnerColor: Color
+        Names: string seq
     }
 
     type Msg =
         | SetColor of Color
         | SetInnerColor of Color
+        | AddName of string
+        | RemoveName of string
 
     let init () =
         {
             Color = Red
             InnerColor = Black
+            Names = ["Håvar"; "Hilde"; "Agnes"]
         },
         Cmd.none
 
@@ -27,6 +31,18 @@ module App =
             { model with Color = c }, Cmd.none
         | SetInnerColor c ->
             { model with InnerColor = c }, Cmd.none
+        | AddName name ->
+            { model with Names = Seq.append model.Names [name] }, Cmd.none
+        | RemoveName name ->
+            { model with Names = Seq.filter (fun n -> name <> n ) model.Names }, Cmd.none
+
+    let nameView name =
+        text
+            [
+                QmlProp.Text name;
+                OnClicked (RemoveName name);
+                HoverColor (Black, Green);
+            ]
 
     let view model dispatch =
         let newColor =
@@ -38,9 +54,16 @@ module App =
             | Black -> Red
             | _ -> Black
         rectangle
-            [ Width 100; Height 100; Color model.Color; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetColor newColor) ]
+            [ Width 300; Height 500; Color model.Color; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetColor newColor) ]
             [
-                rectangle [ Width 50; Height 50; Color model.InnerColor; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetInnerColor newInnerColor); ] []
+                column
+                    []
+                    [
+                        scroll [ Height 350; Width 300] (column [] (model.Names |> Seq.map nameView));
+                        rectangle
+                            [ Width 50; Height 30; Color model.InnerColor; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (AddName (System.Guid.NewGuid().ToString())); ]
+                            [ text [ QmlProp.Text "AddNew" ] ];
+                    ]
             ]
         
 
