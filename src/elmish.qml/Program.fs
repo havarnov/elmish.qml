@@ -41,7 +41,8 @@ let startElmishLoop
     let setState model dispatch =
         let qmlEl = Program.view program model dispatch
 
-        let (qml, msgs) = toQml qmlEl
+        let (qml, msgs) = toQmlAndCmdMap qmlEl
+        // printfn "%s" qml
         let callback m =
             match msgs |> Map.tryFind m with
             | Some msg -> dispatch msg

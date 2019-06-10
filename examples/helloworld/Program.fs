@@ -44,15 +44,11 @@ module App =
                 HoverColor (Black, Green);
             ]
 
-    let view model dispatch =
+    let view model _ =
         let newColor =
             match model.Color with
             | Red -> Blue
             | _ -> Red
-        let newInnerColor =
-            match model.InnerColor with
-            | Black -> Red
-            | _ -> Black
         rectangle
             [ Width 300; Height 500; Color model.Color; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (SetColor newColor) ]
             [

@@ -6,15 +6,21 @@ type Color =
     | Red
     | Blue
     | Black
+    | Green
 
 let toString c =
     match c with
     | Red -> "red"
     | Blue -> "blue"
     | Black -> "black"
+    | Green -> "green"
 
-
-type QmlProp<'msg> =
+type QmlElement<'msg> = {
+    Item: QmlItem
+    Attributes: QmlProp<'msg> seq
+    Children: QmlElement<'msg> seq
+}
+and QmlProp<'msg> =
     | Width of int
     | Height of int
     | Color of Color
@@ -22,15 +28,13 @@ type QmlProp<'msg> =
     | BorderColor of Color
     | Radius of int
     | OnClicked of 'msg
-
-type QmlItem =
+    | Text of string
+    | HoverColor of Color * Color
+and QmlItem =
     | Rectangle
-
-type QmlElement<'msg> = {
-    Item: QmlItem
-    Attributes: QmlProp<'msg> seq
-    Children: QmlElement<'msg> seq
-}
+    | Column
+    | Text
+    | ScrollView
 
 let msgToString id msg =
     sprintf
@@ -44,74 +48,120 @@ let msgToString id msg =
         """
         id
 
-let inline rectangle props children =
+let inline element itemType props children =
     {
-        Item = Rectangle;
+        Item = itemType;
         Attributes = props;
         Children = children;
     }
 
-let prosToQml props =
-    let empty s = (s, None)
-    let pToStr = (fun p ->
-        match p with
-            | Width w -> sprintf "width: %d" w |> empty
-            | Height h -> sprintf "height: %d" h |> empty
-            | Color c -> sprintf "color: %A" (toString c) |> empty
-            | BorderWidth w -> sprintf "border.width: %d" w |> empty
-            | BorderColor c -> sprintf "border.color: %A" (toString c) |> empty
-            | Radius r -> sprintf "radius: %d" r |> empty
-            | OnClicked msg ->
-                let id = Guid.NewGuid().ToString()
-                (msgToString id msg, Some (id, msg)))
+let inline rectangle props children =
+    element Rectangle props children
 
-    let (strs, msgs) =
-        props
-        |> Seq.fold
-            (fun s n ->
-                let (strList, msgList) = s
-                let (propStr, msg) = pToStr n
-                ((Seq.append strList (Seq.singleton propStr)), (match msg with | Some (id, mm) -> Map.add id mm msgList | None -> msgList)))
-            (Seq.empty, Map.empty)
-    
-    let propStr = strs |> Seq.fold (fun s n -> sprintf "%s%s%s" s System.Environment.NewLine n) String.Empty
-    (propStr, msgs)
+let inline column props children =
+    element Column props children
 
-let rec toQmlInner dom: (string * Map<string, 'a>) =
-    printfn "%A" dom.Children
-    match dom.Item with
-    | Rectangle ->
-        let (props, msgs) = (prosToQml dom.Attributes)
-        let children = Seq.toList (Seq.map toQmlInner dom.Children)
-        let xx =
-            children
-            |> Seq.map (snd >> Map.toSeq)
-            |> Seq.collect id
-        let msgs2 = Seq.append (Map.toSeq msgs) xx |> Map.ofSeq
-        let childQml =
-            children
-            |> Seq.map fst
-            |> Seq.fold (fun s n -> sprintf "%s%s%s" s System.Environment.NewLine n) String.Empty
+let inline text props =
+    element Text props []
 
-        (
+let inline scroll props child =
+    element ScrollView props (Seq.singleton child)
+
+let concatNewLine s n =
+    sprintf "%s%s%s" s System.Environment.NewLine n
+
+module Seq =
+    let concatNewLine s = Seq.fold concatNewLine String.Empty s
+
+let empty s = (s, None)
+
+let rec pToStr p: string * (string * 'a) seq option =
+    match p with
+        | Width w -> sprintf "width: %d" w |> empty
+        | Height h -> sprintf "height: %d" h |> empty
+        | Color c -> sprintf "color: %A" (toString c) |> empty
+        | BorderWidth w -> sprintf "border.width: %d" w |> empty
+        | BorderColor c -> sprintf "border.color: %A" (toString c) |> empty
+        | Radius r -> sprintf "radius: %d" r |> empty
+        | OnClicked msg ->
+            let id = Guid.NewGuid().ToString()
+            (msgToString id msg, Some (Seq.ofList [(id, msg)]))
+        | QmlProp.Text t -> sprintf "text: '%s'" t |> empty
+        | HoverColor (d, h) ->
+            let i = "foo" + System.Random().Next().ToString()
             sprintf
                 """
-                Rectangle {
-                    %s
-                    %s
+                color: %s.containsMouse ? %A : %A
+                MouseArea {
+                    id: %s
+                    z: -1
+                    anchors.fill: parent
+                    hoverEnabled: true
                 }
                 """
-                props
-                childQml,
-            msgs2)
+                <| i
+                <| toString h
+                <| toString d
+                <| i
+                |> empty
 
-let toQml dom =
+let prosToQml props =
+    props
+    |> Seq.fold
+        (fun s n ->
+            let (strList, msgList) = s
+            let (propStr, msg) = pToStr n
+            (
+                (Seq.append strList (Seq.singleton propStr)),
+                (
+                    match msg with
+                    | Some (s) -> Map.ofSeq (Seq.append (Map.toSeq msgList) s)
+                    | None -> msgList)))
+        (Seq.empty, Map.empty)
+    |> (fun (s, m) -> (s |> Seq.concatNewLine), m)
+
+let rec toQmlInner dom: (string * Map<string, 'a>) =
+
+    let (props, msgs) = (prosToQml dom.Attributes)
+
+    let childrenQml =
+        dom.Children
+        |> Seq.map toQmlInner
+        |> Seq.toList
+
+    let msgs =
+        childrenQml
+        |> Seq.map (snd >> Map.toSeq)
+        |> Seq.collect id
+        |> Seq.append (Map.toSeq msgs)
+        |> Map.ofSeq
+
+    let childrenQmlCombined =
+        childrenQml
+        |> Seq.map fst
+        |> Seq.concatNewLine
+
+    (
+        sprintf
+            """
+            %A {
+                %s
+                %s
+            }
+            """
+            dom.Item
+            props
+            childrenQmlCombined,
+        msgs)
+
+let toQmlAndCmdMap dom =
     let (el, msgs) = toQmlInner dom
     (
         sprintf
             """
             import QtQuick 2.7
             import QtQuick.Controls 2.0
+            import QtQuick.Controls 1.4
             import QtQuick.Layouts 1.0
             %s
             """
