@@ -4,12 +4,12 @@ open Elmish
 open Elmish.Qml.View
 
 open Qml.Net
+open Elmish.Qml.Csharp
 
 let main = """
 import QtQuick 2.7
 import QtQuick.Controls 2.0
 import QtQuick.Layouts 1.0
-import QmlElmish 1.0
 
 ApplicationWindow {
     visible: true
@@ -21,23 +21,24 @@ ApplicationWindow {
         property var dynamicObj
         id: container
         anchors.fill: parent
-    }
 
-    QmlElmishManager {
-        id: mngr
-        onQmlStrChanged: {
-            if (container.dynamicObj)
-            {
-                container.dynamicObj.destroy();
+        Connections {
+            target: mngr
+            onQmlStrChanged: {
+                if (container.dynamicObj)
+                {
+                    container.dynamicObj.destroy();
+                }
+                container.dynamicObj = Qt.createQmlObject(mngr.qmlStr, container, "testing");
             }
-            container.dynamicObj = Qt.createQmlObject(mngr.qmlStr, container, "testing");
         }
     }
 }
 """
 
 let startElmishLoop
-    (program: Program<unit, 'model, 'msg, QmlElement<'msg>>) =
+    (program: Program<unit, 'model, 'msg, QmlElement<'msg>>)
+    (manager: QmlElmishManager) =
     let setState model dispatch =
         let qmlEl = Program.view program model dispatch
 
@@ -48,10 +49,8 @@ let startElmishLoop
             | Some msg -> dispatch msg
             | None -> ()
 
-        if not (isNull Elmish.Qml.Csharp.QmlElmishManager.Instance)
-        then
-            Elmish.Qml.Csharp.QmlElmishManager.Instance.Callback <- (System.Action<string> callback)
-            Elmish.Qml.Csharp.QmlElmishManager.Instance.ChangeBindableProperty(qml)
+        manager.Callback <- (System.Action<string> callback)
+        manager.QmlStr <- qml
         ()
 
     program
@@ -60,7 +59,8 @@ let startElmishLoop
 
 let runApp (app: QGuiApplication) program =
     use engine = new QQmlApplicationEngine()
-    let _ = Qml.Net.Qml.RegisterType<Elmish.Qml.Csharp.QmlElmishManager>("QmlElmish", 1, 0);
+    let mngr = QmlElmishManager()
+    engine.SetContextProperty("mngr", mngr)
     engine.LoadData main
-    startElmishLoop program
+    startElmishLoop program mngr
     app.Exec()

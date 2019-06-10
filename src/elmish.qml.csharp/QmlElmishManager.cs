@@ -8,7 +8,6 @@ namespace Elmish.Qml.Csharp
     {
         public QmlElmishManager()
         {
-            Instance = this;
         }
 
         public static string _qmlStr = "";
@@ -22,11 +21,6 @@ namespace Elmish.Qml.Csharp
             {
                 Callback(msg);
             }
-        }
-
-        public void ChangeBindableProperty(string newQmlStr)
-        {
-            QmlStr = newQmlStr;
         }
 
 
@@ -43,7 +37,5 @@ namespace Elmish.Qml.Csharp
                 this.ActivateSignal("qmlStrChanged");
             }
         }
-
-        public static QmlElmishManager Instance { get; private set; }
     }
 }
