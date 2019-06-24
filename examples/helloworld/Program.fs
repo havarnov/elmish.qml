@@ -58,7 +58,7 @@ module App =
                         scroll [ Height 350; Width 300] (column [] (model.Names |> Seq.map nameView));
                         rectangle
                             [ Width 50; Height 30; Color model.InnerColor; BorderColor Black; BorderWidth 5; Radius 10; OnClicked (AddName (System.Guid.NewGuid().ToString())); ]
-                            [ text [ QmlProp.Text "AddNew" ] ];
+                            [ text [ QmlProp.Text "AddNew"; Color Red] ];
                     ]
             ]
         

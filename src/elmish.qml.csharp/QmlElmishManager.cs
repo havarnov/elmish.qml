@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+
 using Qml.Net;
 
 namespace Elmish.Qml.Csharp

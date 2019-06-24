@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <PackageReference Include="Qml.Net.WindowsBinaries" Version="0.10.1" />
+    <PackageReference Include="Qml.Net.LinuxBinaries" Version="0.10.1" />
     <ProjectReference Include="..\..\src\elmish.qml\elmish.qml.fsproj" />
     <PackageReference Update="FSharp.Core" Version="4.6.2" />
   </ItemGroup>

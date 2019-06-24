@@ -38,19 +38,57 @@ ApplicationWindow {
 
 let startElmishLoop
     (program: Program<unit, 'model, 'msg, QmlElement<'msg>>)
-    (manager: QmlElmishManager) =
+    (manager: QmlElmishManager)
+    (engine: QQmlApplicationEngine) =
     let setState model dispatch =
         let qmlEl = Program.view program model dispatch
 
-        let (qml, msgs) = toQmlAndCmdMap qmlEl
-        // printfn "%s" qml
+        // let (qml, msgs) = toQmlAndCmdMap qmlEl
+        // // printfn "%s" qml
+        // let callback m =
+        //     match msgs |> Map.tryFind m with
+        //     | Some msg -> dispatch msg
+        //     | None -> ()
+
+        // manager.Callback <- (System.Action<string> callback)
+        // manager.QmlStr <- qml
+
+        let qmls =
+            toQmlAndCmdMap2 qmlEl
+
+        let rec addToContext (q: Qmls<'msg>) =
+            for c in q.Children |> Seq.toList do
+                addToContext c
+            printfn "%s" q.Id
+            engine.SetContextProperty(q.Id, q.Manager)
+        
+        addToContext qmls
+
         let callback m =
-            match msgs |> Map.tryFind m with
+            match qmls.CmdMap |> Map.tryFind m with
             | Some msg -> dispatch msg
             | None -> ()
 
         manager.Callback <- (System.Action<string> callback)
-        manager.QmlStr <- qml
+        printfn "%s" qmls.QmlStr
+        manager.QmlStr <- qmls.QmlStr
+
+        let rec i (inner: Qmls<'msg>) =
+            let callback m =
+                match inner.CmdMap |> Map.tryFind m with
+                | Some msg -> dispatch msg
+                | None -> ()
+
+            inner.Manager.Callback <- (System.Action<string> callback)
+            printfn "%s" inner.QmlStr
+            inner.Manager.QmlStr <- inner.QmlStr
+
+            for c in inner.Children |> Seq.toList do
+                i c
+
+        for c in qmls.Children |> Seq.toList do
+            i c
+
         ()
 
     program
@@ -62,5 +100,5 @@ let runApp (app: QGuiApplication) program =
     let mngr = QmlElmishManager()
     engine.SetContextProperty("mngr", mngr)
     engine.LoadData main
-    startElmishLoop program mngr
+    startElmishLoop program mngr engine
     app.Exec()

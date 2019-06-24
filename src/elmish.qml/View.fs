@@ -1,6 +1,7 @@
 module Elmish.Qml.View
 
 open System
+open Elmish.Qml.Csharp
 
 type Color =
     | Red
@@ -35,6 +36,14 @@ and QmlItem =
     | Column
     | Text
     | ScrollView
+
+type Qmls<'a> = {
+    Id: string;
+    Manager: QmlElmishManager;
+    QmlStr: string;
+    CmdMap: Map<string, 'a>
+    Children: Qmls<'a> list;
+}
 
 let msgToString id msg =
     sprintf
@@ -168,3 +177,69 @@ let toQmlAndCmdMap dom =
             el,
         msgs
     )
+
+let i id =
+    sprintf
+        """
+        Item {
+            property var dynamicObj
+            id: container%s
+            anchors.fill: parent
+
+            Connections {
+                target: %s
+                onQmlStrChanged: {
+                    if (container%s.dynamicObj)
+                    {
+                        container%s.dynamicObj.destroy();
+                    }
+                    container%s.dynamicObj = Qt.createQmlObject(%s.qmlStr, container%s, "container%s");
+                }
+            }
+        }
+        """
+        id
+        id
+        id
+        id
+        id
+        id
+        id
+        id
+
+let rec toQmlInner2 (dom: QmlElement<'a>): Qmls<'a> =
+
+    let children = dom.Children |> Seq.toList |> List.map toQmlInner2
+
+    let (props, msgs) = prosToQml dom.Attributes
+
+    let qmlStr =
+        sprintf
+            """
+            import QtQuick 2.7
+            import QtQuick.Controls 2.0
+            import QtQuick.Controls 1.4
+            import QtQuick.Layouts 1.0
+
+            %A {
+                %s
+                %s
+            }
+            """
+            dom.Item
+            props
+            (children
+                |> Seq.map (fun c -> c.Id)
+                |> Seq.map i
+                |> Seq.concatNewLine)
+
+    {
+        Id = sprintf "mngr%d" (Random().Next())
+        Manager = QmlElmishManager();
+        QmlStr = qmlStr;
+        CmdMap = msgs;
+        Children = children;
+    }
+
+let toQmlAndCmdMap2 (dom: QmlElement<'a>): Qmls<'a> =
+    toQmlInner2 dom
